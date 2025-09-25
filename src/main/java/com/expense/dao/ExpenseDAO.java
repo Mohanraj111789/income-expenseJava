@@ -4,17 +4,19 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.sql.PreparedStatement;
-import java.sql.Statement;
-
+import java.sql.ResultSet;
+import java.sql.Timestamp;
+import java.util.Date;
 import com.expense.model.Category;
 import com.expense.model.Expense;
 import com.expense.util.DatabaseConnection;
-import java.sql.ResultSet;
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
+
 public class ExpenseDAO {
     private static final String SELECT_ALL = "SELECT * FROM category";
     private static final String SELECT_EXP = "SELECT * FROM expense";
+    private static final String INSERT_CATEGORY = "INSERT INTO category (category_name) VALUES (?)";
+    private static final String FILTER_NAMES = "SELECT category_name FROM category";
+    private static final String INSERT_EXPENSE = "INSERT INTO expense (expense_name, amount, category_id, description, transaction_date,created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
 
     private Category getCategoryRow(ResultSet rs) throws SQLException{
         int id = rs.getInt("category_id");
@@ -27,10 +29,12 @@ public class ExpenseDAO {
     {
         int id = rs.getInt("expense_id");
         String name = rs.getString("expense_name");
-        double amount = rs.getDouble("expense_amount");
-        int categoryId = rs.getInt("category_id");
-        Timestamp timestamp = rs.getTimestamp("expense_date");
-        Expense exp = new Expense(id, name, amount, categoryId, timestamp);
+        double amount = rs.getDouble("amount");
+        String description = rs.getString("description");
+        Timestamp timestamp = rs.getTimestamp("transaction_date");
+        String category_name = getCategoryName(rs.getInt("category_id"));
+        Expense exp = new Expense(name, amount, description, new Date(timestamp.getTime()), category_name);
+        exp.setId(id);
         return exp;
     }
 
@@ -60,5 +64,85 @@ public class ExpenseDAO {
             }
         return exps;
     }
+    public void addExpense(String name, double amount, int categoryId, String description,Date date) throws SQLException
+    {
+        try(
+            Connection con = DatabaseConnection.getDBConnection();
+            PreparedStatement stmt = con.prepareStatement(INSERT_EXPENSE)) {
+                stmt.setString(1, name);
+                stmt.setDouble(2, amount);
+                stmt.setInt(3, categoryId);
+                stmt.setString(4, description);
+                stmt.setTimestamp(5, new Timestamp(date.getTime()));
+                int rowsAffected = stmt.executeUpdate();
+                if(rowsAffected == 0)
+                {
+                    throw new SQLException("Creating expense failed, no rows affected.");
+                }
+            }
+    }
+    public void addCategory(String name) throws SQLException
+    {
+        try(
+            Connection con = DatabaseConnection.getDBConnection();
+            PreparedStatement stmt = con.prepareStatement(INSERT_CATEGORY)) {
+                stmt.setString(1, name);
+                int rowsAffected = stmt.executeUpdate();
+                if(rowsAffected == 0)
+                {
+                    throw new SQLException("Creating category failed, no rows affected.");
+                }
+            }
+    }
+    public String[] getAllcatnames(int type) throws SQLException{
+        List<String> names = new ArrayList<>();
+        try(
+            Connection con = DatabaseConnection.getDBConnection();
+            PreparedStatement stmt = con.prepareStatement(FILTER_NAMES)) {
+                ResultSet rs = stmt.executeQuery();
+                if(type == 1){
+                names.add("All");
+                }
+                while(rs.next()){
+                    names.add(rs.getString("category_name"));
+                }
+            }
+        return names.toArray(new String[0]);
+
+
+    }
+    public int getCategoryID(String name) throws SQLException{
+        int id = -1;
+        try(
+            Connection con = DatabaseConnection.getDBConnection();
+            PreparedStatement stmt = con.prepareStatement("Select category_id from category where category_name = ?")) {
+                stmt.setString(1, name);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    id = rs.getInt("category_id");
+                } else {
+                    // No matching category found; keep id = -1 or throw an exception
+                    id = -1;
+                }
+            }
+        return id;
+        }
+    public String getCategoryName(int id) throws SQLException{
+        String name = "";
+        try(
+            Connection con = DatabaseConnection.getDBConnection();
+            PreparedStatement stmt = con.prepareStatement("Select category_name from category where category_id = ?")) {
+                stmt.setInt(1, id);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    name = rs.getString("category_name");
+                } else {
+                    // No matching category found; keep name = "" or throw an exception
+                    name = "";
+                }
+            }
+        return name;
+        }
+
     
 }
