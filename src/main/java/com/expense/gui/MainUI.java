@@ -211,7 +211,7 @@ class ExpenseUI extends JFrame {
         amountField = new JTextField(20);
         categoryComboBox = new JComboBox<>(filteroption(0));
         
-        String[] columns = {"Name","Amount","Category","Description","Date"};
+        String[] columns = {"ID","Name","Amount","Category","Description","Date"};
         expenseTableModel = new DefaultTableModel(columns,0){
             @Override
             public boolean isCellEditable(int row, int column){
@@ -219,8 +219,25 @@ class ExpenseUI extends JFrame {
             }
         };
         expenseTable = new JTable(expenseTableModel);
+        expenseTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        expenseTable.getSelectionModel().addListSelectionListener(e->{
+            if(!e.getValueIsAdjusting()){
+                getSelectedRow();
+            }
+                
+        });
     }
-    
+    private void getSelectedRow(){
+        int row = expenseTable.getSelectedRow();
+        if(row >=0){
+            titleField.setText(expenseTableModel.getValueAt(row, 1).toString());
+            amountField.setText(expenseTableModel.getValueAt(row, 2).toString());
+            categoryComboBox.setSelectedItem(expenseTableModel.getValueAt(row, 3).toString());
+            descriptionArea.setText(expenseTableModel.getValueAt(row, 4).toString());       
+            
+        }
+    }
+    //setuplayout
     private void setupLayout() {
   
         setLayout(new BorderLayout());
@@ -292,6 +309,7 @@ class ExpenseUI extends JFrame {
         for (Expense expense : expenses) {
             SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
             expenseTableModel.addRow(new Object[]{
+                expense.getId(),
                 expense.getName(),
                 expense.getAmount(),
                 expense.getCategory_name(),
@@ -335,8 +353,8 @@ class ExpenseUI extends JFrame {
         int categoryID = expenseDAO.getCategoryID((String)categoryComboBox.getSelectedItem());
         System.out.println(categoryID);
         String description = descriptionArea.getText().trim();
-        
-            expenseDAO.addExpense(name, amount, categoryID, description,new Date());
+        Expense expense = new Expense(name, amount, description, new Date(), categoryID);
+        expenseDAO.addExpense(expense);
             loadExpense();
             titleField.setText("");
             amountField.setText("");

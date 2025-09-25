@@ -33,8 +33,7 @@ public class ExpenseDAO {
         String description = rs.getString("description");
         Timestamp timestamp = rs.getTimestamp("transaction_date");
         String category_name = getCategoryName(rs.getInt("category_id"));
-        Expense exp = new Expense(name, amount, description, new Date(timestamp.getTime()), category_name);
-        exp.setId(id);
+        Expense exp = new Expense(id,name, amount, description, new Date(timestamp.getTime()), category_name);
         return exp;
     }
 
@@ -64,16 +63,16 @@ public class ExpenseDAO {
             }
         return exps;
     }
-    public void addExpense(String name, double amount, int categoryId, String description,Date date) throws SQLException
+    public void addExpense(Expense expense) throws SQLException
     {
         try(
             Connection con = DatabaseConnection.getDBConnection();
             PreparedStatement stmt = con.prepareStatement(INSERT_EXPENSE)) {
-                stmt.setString(1, name);
-                stmt.setDouble(2, amount);
-                stmt.setInt(3, categoryId);
-                stmt.setString(4, description);
-                stmt.setTimestamp(5, new Timestamp(date.getTime()));
+                stmt.setString(1, expense.getName());
+                stmt.setDouble(2, expense.getAmount());
+                stmt.setInt(3, expense.getCategory_id());
+                stmt.setString(4, expense.getDescription());
+                stmt.setTimestamp(5, new Timestamp(expense.getDate().getTime()));
                 int rowsAffected = stmt.executeUpdate();
                 if(rowsAffected == 0)
                 {

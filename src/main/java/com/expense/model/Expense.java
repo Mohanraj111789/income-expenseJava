@@ -13,12 +13,27 @@ public class Expense {
     private String description;
     private Date date;
 
+    public Expense(int id,String name, double amount, String description, Date date, String category_name) {
+        this.id = id;
+        this.name = name;
+        this.amount = amount;
+        this.description = description;
+        this.date = date;
+        this.category_name = category_name;
+    }
     public Expense(String name, double amount, String description, Date date, String category_name) {
         this.name = name;
         this.amount = amount;
         this.description = description;
         this.date = date;
         this.category_name = category_name;
+    }
+    public Expense(String name, double amount, String description, Date date, int category_id) {
+        this.name = name;
+        this.amount = amount;
+        this.description = description;
+        this.date = date;
+        this.category_id = category_id;
     }
 
     public String getName() {
