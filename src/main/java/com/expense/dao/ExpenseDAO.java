@@ -18,6 +18,7 @@ public class ExpenseDAO {
     private static final String FILTER_NAMES = "SELECT category_name FROM category";
     private static final String INSERT_EXPENSE = "INSERT INTO expense (expense_name, amount, category_id, description, transaction_date,created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
     private static final String DELETE_EXPENSE = "DELETE FROM expense WHERE expense_id = ?";
+    private static final String UPDATE_EXPENSE = "UPDATE expense SET expense_name = ?, amount = ?, category_id = ?, description = ?, transaction_date = ? WHERE expense_id = ?";
 
     private Category getCategoryRow(ResultSet rs) throws SQLException{
         int id = rs.getInt("category_id");
@@ -152,6 +153,27 @@ public class ExpenseDAO {
             PreparedStatement stmt = con.prepareStatement(DELETE_EXPENSE))
             {
                 stmt.setInt(1,row);
+                int rowsAffected = stmt.executeUpdate();
+                if(rowsAffected == 0)
+                {
+                    throw new SQLException();
+                }
+            }
+        }
+
+        // Update expenses
+
+        public void updateExpenseSql(Expense expense) throws SQLException
+        {
+            try(Connection con = DatabaseConnection.getDBConnection();
+            PreparedStatement stmt = con.prepareStatement(UPDATE_EXPENSE))
+            {
+                stmt.setString(1, expense.getName());
+                stmt.setDouble(2, expense.getAmount());
+                stmt.setInt(3, expense.getCategory_id());
+                stmt.setString(4, expense.getDescription());
+                stmt.setTimestamp(5, new Timestamp(expense.getDate().getTime()));
+                stmt.setInt(6, expense.getId());
                 int rowsAffected = stmt.executeUpdate();
                 if(rowsAffected == 0)
                 {

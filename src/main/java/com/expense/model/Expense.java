@@ -28,6 +28,14 @@ public class Expense {
         this.date = date;
         this.category_name = category_name;
     }
+    public Expense(int id,String name, double amount, String description, Date date, int category_id) {
+        this.id = id;
+        this.name = name;
+        this.amount = amount;
+        this.description = description;
+        this.date = date;
+        this.category_id = category_id;
+    }
     public Expense(String name, double amount, String description, Date date, int category_id) {
         this.name = name;
         this.amount = amount;

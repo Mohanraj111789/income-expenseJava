@@ -368,7 +368,31 @@ class ExpenseUI extends JFrame {
             JOptionPane.showMessageDialog(this, "Failed to add expense: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
-    private void updateExpenseSql(){}
+    private void updateExpenseSql(){
+        try{
+            int row = expenseTable.getSelectedRow();
+            if(row != -1)
+            {
+                int id =(int) expenseTable.getValueAt(row, 0);
+                String name = titleField.getText().trim();
+                double amount = Double.parseDouble(amountField.getText().trim());
+                int categoryID = expenseDAO.getCategoryID((String)categoryComboBox.getSelectedItem());
+                String description = descriptionArea.getText().trim();
+                Expense expense = new Expense(id,name, amount, description, new Date(), categoryID);
+                expenseDAO.updateExpenseSql(expense);
+                JOptionPane.showMessageDialog(this,"Update Successfull","Sucess",JOptionPane.INFORMATION_MESSAGE);
+                loadExpense();
+            }
+            else{
+                JOptionPane.showMessageDialog(this,"Select row to update","Error",JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        }
+        catch(Exception e){
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Failed to update expense: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
     private void deleteExpenseSql(){
         try{
             int row = expenseTable.getSelectedRow();
