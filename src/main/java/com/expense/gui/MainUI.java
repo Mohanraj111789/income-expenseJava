@@ -206,9 +206,9 @@ class ExpenseUI extends JFrame {
         descriptionArea = new JTextArea(5, 20);
         filterComboBox = new JComboBox<>(filteroption(1));
         
-        addButton = new JButton("Add");
-        updateButton = new JButton("Update");
-        deleteButton = new JButton("Delete");
+        addButton = new JButton("Add Expense");
+        updateButton = new JButton("Update Expense");
+        deleteButton = new JButton("Delete Expense");
         amountField = new JTextField(20);
         categoryComboBox = new JComboBox<>(filteroption(0));
         
@@ -295,13 +295,31 @@ class ExpenseUI extends JFrame {
     }
     
     private void loadExpense() {
+        // Save the currently selected row ID before refresh
+        int selectedId = -1;
+        int selectedRow = expenseTable.getSelectedRow();
+        if(selectedRow >= 0) {
+            selectedId = (int)expenseTableModel.getValueAt(selectedRow, 0);
+        }
+
         try{
             List<Expense> expenses = expenseDAO.getAllExpenses();
             updateExpenseTable(expenses);
+            
+            // Restore selection if there was one
+            if(selectedId != -1) {
+                for(int i = 0; i < expenseTableModel.getRowCount(); i++) {
+                    int rowId = (int)expenseTableModel.getValueAt(i, 0);
+                    if(rowId == selectedId) {
+                        expenseTable.setRowSelectionInterval(i, i);
+                        // expenseTable.scrollRectToVisible(expenseTable.getCellRect(i, 0, true));
+                        break;
+                    }
+                }
+            }
         }
         catch(Exception e){
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Failed to load expenses: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            System.out.println(e.getMessage());
         }
     }
     
@@ -360,6 +378,7 @@ class ExpenseUI extends JFrame {
             titleField.setText("");
             amountField.setText("");
             categoryComboBox.setSelectedIndex(0);
+            filterComboBox.setSelectedIndex(0);
             descriptionArea.setText("");
             JOptionPane.showMessageDialog(this, "Expense added successfully", "Success", JOptionPane.INFORMATION_MESSAGE);
         }
@@ -402,6 +421,7 @@ class ExpenseUI extends JFrame {
                 expenseDAO.deleteExpenseSql(id);
                 JOptionPane.showMessageDialog(this,"Delete Successfull","Sucess",JOptionPane.INFORMATION_MESSAGE);
                 loadExpense();
+                filterComboBox.setSelectedIndex(0);
 
             }
             else{
@@ -416,7 +436,72 @@ class ExpenseUI extends JFrame {
         }
 
     }
-    private void filterExpense(){}
+    private void filterExpense(){
+        // Save the currently selected row's ID before filtering
+        int selectedId = -1;
+        int selectedRow = expenseTable.getSelectedRow();
+        if(selectedRow >= 0) {
+            selectedId = (int)expenseTableModel.getValueAt(selectedRow, 0);
+        }
+
+        try{
+            if ("All".equals(filterComboBox.getSelectedItem()))
+            {
+                loadExpense();
+                // Only clear form if no row was selected
+                if(selectedId == -1) {
+                    setDefault();
+                }
+            }
+            else{
+                int categoryID = expenseDAO.getCategoryID((String)filterComboBox.getSelectedItem());
+                List<Expense> expenses = expenseDAO.filterExpenseByCategory(categoryID);
+                updateExpenseTable(expenses);
+                
+                // If there was a selected row, try to find and select it again
+                if(selectedId != -1) {
+                    boolean found = false;
+                    int rowCount = expenseTableModel.getRowCount();
+                    
+                    for(int i = 0; i < rowCount; i++) {
+                        try {
+                            int rowId = (int)expenseTableModel.getValueAt(i, 0);
+                            if(rowId == selectedId) {
+                                if(i < expenseTable.getRowCount()) {
+                                    expenseTable.setRowSelectionInterval(i, i);
+                                    loadSelectedRow(); // Reload the form fields
+                                    found = true;
+                                }
+                                
+                                break;
+                            }
+                        } catch (Exception e) {
+                            JOptionPane.showMessageDialog(this, "error","error",JOptionPane.ERROR_MESSAGE);
+                            System.out.println("Error processing row " + i + ": " + e.getMessage());
+                        }
+                    }
+                    // If selected row is not in filtered results, clear the form
+                    if(!found) {
+                        setDefault();
+                    }
+                } else {
+                    // If no row was selected, clear the form
+                    setDefault();
+                }
+            }
+        }
+        catch(Exception e){
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Failed to filter expense: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    private void setDefault()
+    {
+        titleField.setText("");
+        amountField.setText("");
+        
+        descriptionArea.setText("");
+    }
     
 }
 

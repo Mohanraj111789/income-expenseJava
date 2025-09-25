@@ -19,6 +19,7 @@ public class ExpenseDAO {
     private static final String INSERT_EXPENSE = "INSERT INTO expense (expense_name, amount, category_id, description, transaction_date,created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
     private static final String DELETE_EXPENSE = "DELETE FROM expense WHERE expense_id = ?";
     private static final String UPDATE_EXPENSE = "UPDATE expense SET expense_name = ?, amount = ?, category_id = ?, description = ?, transaction_date = ? WHERE expense_id = ?";
+    private static final String FILTER = "SELECT * FROM expense WHERE category_id = ?";
 
     private Category getCategoryRow(ResultSet rs) throws SQLException{
         int id = rs.getInt("category_id");
@@ -181,6 +182,26 @@ public class ExpenseDAO {
                 }
             }
         }
+        // filter by categories
+        public List<Expense> filterExpenseByCategory(int category_id) throws SQLException
+        {
+            try(
+                Connection con = DatabaseConnection.getDBConnection();
+                PreparedStatement stmt = con.prepareStatement(FILTER)
+            )
+            {
+                stmt.setInt(1, category_id);
+                ResultSet rs = stmt.executeQuery();
+                List<Expense> expenses = new ArrayList<>();
+                while(rs.next())
+                {
+                    expenses.add(getCategoryRow1(rs));
+                }
+                return expenses;
+            }
+        }
+
+
 
     
 }
