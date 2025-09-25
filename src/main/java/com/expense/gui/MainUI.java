@@ -6,6 +6,7 @@ import com.expense.model.Category;
 import com.expense.model.Expense;
 import com.expense.dao.ExpenseDAO;
 import java.awt.*;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Date;
 import java.text.SimpleDateFormat;
@@ -222,16 +223,16 @@ class ExpenseUI extends JFrame {
         expenseTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         expenseTable.getSelectionModel().addListSelectionListener(e->{
             if(!e.getValueIsAdjusting()){
-                getSelectedRow();
+                loadSelectedRow();
             }
                 
         });
     }
-    private void getSelectedRow(){
+    private void loadSelectedRow(){
         int row = expenseTable.getSelectedRow();
         if(row >=0){
-            titleField.setText(expenseTableModel.getValueAt(row, 1).toString());
-            amountField.setText(expenseTableModel.getValueAt(row, 2).toString());
+            titleField.setText(expenseTableModel.getValueAt(row, 1).toString()!=""?expenseTableModel.getValueAt(row, 1).toString():"NULL");
+            amountField.setText(expenseTableModel.getValueAt(row, 2).toString()!=""?expenseTableModel.getValueAt(row, 2).toString():"NULL");
             categoryComboBox.setSelectedItem(expenseTableModel.getValueAt(row, 3).toString());
             descriptionArea.setText(expenseTableModel.getValueAt(row, 4).toString());       
             
@@ -368,7 +369,29 @@ class ExpenseUI extends JFrame {
         }
     }
     private void updateExpenseSql(){}
-    private void deleteExpenseSql(){}
+    private void deleteExpenseSql(){
+        try{
+            int row = expenseTable.getSelectedRow();
+            if(row != -1)
+            {
+                int id =(int) expenseTable.getValueAt(row, 0);
+                expenseDAO.deleteExpenseSql(id);
+                JOptionPane.showMessageDialog(this,"Delete Successfull","Sucess",JOptionPane.INFORMATION_MESSAGE);
+                loadExpense();
+
+            }
+            else{
+                JOptionPane.showMessageDialog(this,"Select row to delete","Error",JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        }
+        catch(SQLException e)
+        {
+            JOptionPane.showConfirmDialog(this, "SQL ERROR!!","Error",JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+    }
     private void filterExpense(){}
     
 }

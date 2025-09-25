@@ -17,6 +17,7 @@ public class ExpenseDAO {
     private static final String INSERT_CATEGORY = "INSERT INTO category (category_name) VALUES (?)";
     private static final String FILTER_NAMES = "SELECT category_name FROM category";
     private static final String INSERT_EXPENSE = "INSERT INTO expense (expense_name, amount, category_id, description, transaction_date,created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
+    private static final String DELETE_EXPENSE = "DELETE FROM expense WHERE expense_id = ?";
 
     private Category getCategoryRow(ResultSet rs) throws SQLException{
         int id = rs.getInt("category_id");
@@ -141,6 +142,22 @@ public class ExpenseDAO {
                 }
             }
         return name;
+        }
+
+        // Delete expenses
+
+        public void deleteExpenseSql(int row) throws SQLException
+        {
+            try(Connection con = DatabaseConnection.getDBConnection();
+            PreparedStatement stmt = con.prepareStatement(DELETE_EXPENSE))
+            {
+                stmt.setInt(1,row);
+                int rowsAffected = stmt.executeUpdate();
+                if(rowsAffected == 0)
+                {
+                    throw new SQLException();
+                }
+            }
         }
 
     
