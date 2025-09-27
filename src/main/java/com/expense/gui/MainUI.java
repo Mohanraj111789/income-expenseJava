@@ -1,11 +1,13 @@
 package com.expense.gui;
 
 import javax.swing.*;
+import javax.swing.event.ListSelectionEvent;
 import javax.swing.table.DefaultTableModel;
 import com.expense.model.Category;
 import com.expense.model.Expense;
 import com.expense.dao.ExpenseDAO;
 import java.awt.*;
+import java.io.StringBufferInputStream;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Date;
@@ -60,11 +62,11 @@ public class MainUI extends JFrame{
 class CategoryUI extends JFrame{
 
     private JButton addCategory;
+    private JButton updateCategory;
+    private JButton deleteCategory;
     private JTable categoryTable;
     private DefaultTableModel categoryTableModel;
     private JTextField categoryName;
-    private DefaultTableModel expenseTableModel;
-    private JTable expenseTable;
     private ExpenseDAO expenseDAO;
 
 
@@ -84,10 +86,12 @@ class CategoryUI extends JFrame{
         setSize(1200, 1000);
         setLocationRelativeTo(null);
         addCategory = new JButton("Add Category");
+        updateCategory = new JButton("Update Category");
+        deleteCategory = new JButton("Delete Category");
         
         // categoryTableModel = new DefaultTableModel();
         categoryName = new JTextField(20);
-        String[] columns = {"ID","Name"};
+        String[] columns = {"ID","Name","Expense Count"};
         categoryTableModel = new DefaultTableModel(columns,0){
             @Override
             public boolean isCellEditable(int row, int column){
@@ -95,6 +99,12 @@ class CategoryUI extends JFrame{
             }
         };
         categoryTable = new JTable(categoryTableModel);
+        categoryTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        categoryTable.getSelectionModel().addListSelectionListener((ListSelectionEvent e) -> {
+            if(!e.getValueIsAdjusting()){
+                loadSelectedRow();
+            }
+        });
         
     }
     private void setupLayout(){
@@ -113,15 +123,16 @@ class CategoryUI extends JFrame{
         gbc.gridy = 0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         inputPanel.add(categoryName,gbc);
-        
-        gbc.gridx = 1;
-        gbc.gridy = 1;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        inputPanel.add(addCategory,gbc);
 
 
         JPanel northPanel = new JPanel(new BorderLayout());
         northPanel.add(inputPanel,BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 20));
+        buttonPanel.add(addCategory);
+        buttonPanel.add(updateCategory);
+        buttonPanel.add(deleteCategory);
+        northPanel.add(buttonPanel,BorderLayout.SOUTH);
 
         add(northPanel,BorderLayout.NORTH);
         add(new JScrollPane(categoryTable),BorderLayout.CENTER);
@@ -142,13 +153,19 @@ class CategoryUI extends JFrame{
     private void updateCategoryTable(List<Category> categories) {
         categoryTableModel.setRowCount(0);
         for (Category c : categories) {
-            categoryTableModel.addRow(new Object[]{c.getId(), c.getName()});
+            categoryTableModel.addRow(new Object[]{c.getId(), c.getName(),getExpenseCount(c.getId())});
         }
     }
     private void setUpListeners(){
         addCategory.addActionListener(e->{
             addCategorySql();
+        });
+        updateCategory.addActionListener(e->{
+            updateCategorySql();
+        });
 
+        deleteCategory.addActionListener(e->{
+            deleteCategorySql();
         });
     }
     private void addCategorySql()
@@ -172,6 +189,83 @@ class CategoryUI extends JFrame{
             JOptionPane.showMessageDialog(this, "Failed to add category: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
+    private void loadSelectedRow()
+    {
+        int selectedRow = categoryTable.getSelectedRow();
+        if(selectedRow == -1)
+        {
+            return;
+        }
+        String name = (String)categoryTableModel.getValueAt(selectedRow, 1);
+        categoryName.setText(name);
+    }
+
+    // update category
+
+    private void updateCategorySql(){
+        int row = categoryTable.getSelectedRow();
+        if(row>=0)
+        {
+            try{
+                int id = (int)categoryTable.getValueAt(row, 0);
+                String catName = (String) categoryName.getText().trim();
+                Category category = new Category(id, catName);
+                if(expenseDAO.updateCategorySql(category))
+                {
+                    JOptionPane.showMessageDialog(this,"Update Sucessfull","Info",JOptionPane.INFORMATION_MESSAGE);
+                    loadCategory();
+                    categoryName.setText("");
+
+                }
+            }
+            catch(SQLException e)
+            {
+                JOptionPane.showMessageDialog(this, "SQL Error","Error",JOptionPane.ERROR_MESSAGE);
+            }
+        }
+
+        else{
+            JOptionPane.showConfirmDialog(this, "Select row to update","Error",JOptionPane.ERROR_MESSAGE);
+        }
+
+
+    }
+    // Delete Category
+
+    private void deleteCategorySql()
+    {
+        int row = categoryTable.getSelectedRow();
+        try{
+            if(row >= 0)
+            {
+                int id = (int) categoryTable.getValueAt(row, 0);
+                Category cat = new Category(id);
+                expenseDAO.deleteCategorySql(cat);
+                loadCategory();
+                categoryName.setText("");
+
+                JOptionPane.showMessageDialog(this,"Delete Sucessfull","Info",JOptionPane.INFORMATION_MESSAGE);
+            }
+            else{
+                JOptionPane.showConfirmDialog(this,"Select row to Delete","Error",JOptionPane.ERROR_MESSAGE);
+            }
+    }catch(SQLException e)
+    {
+        JOptionPane.showMessageDialog(this, e,"Error",JOptionPane.ERROR_MESSAGE);
+    }
+
+    }
+    private int getExpenseCount(int categoryId)
+    {
+        try{
+            return expenseDAO.getExpenseCount(categoryId);
+        }
+        catch(SQLException e)
+        {
+            e.printStackTrace();
+            return 0;
+        }
+    }
 }
 
 class ExpenseUI extends JFrame {
@@ -186,6 +280,7 @@ class ExpenseUI extends JFrame {
     private JButton addButton;
     private JButton updateButton;
     private JButton deleteButton;
+    private JLabel totalAmountField;
 
     public ExpenseUI() {
         this.expenseDAO = new ExpenseDAO();
@@ -205,6 +300,7 @@ class ExpenseUI extends JFrame {
         titleField = new JTextField(20);
         descriptionArea = new JTextArea(5, 20);
         filterComboBox = new JComboBox<>(filteroption(1));
+        totalAmountField = new JLabel("Total Amount: "+totalAmount());      
         
         addButton = new JButton("Add Expense");
         updateButton = new JButton("Update Expense");
@@ -221,32 +317,22 @@ class ExpenseUI extends JFrame {
         };
         expenseTable = new JTable(expenseTableModel);
         expenseTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        expenseTable.getSelectionModel().addListSelectionListener(e->{
+        expenseTable.getSelectionModel().addListSelectionListener((ListSelectionEvent e) -> {
             if(!e.getValueIsAdjusting()){
                 loadSelectedRow();
             }
                 
         });
     }
-    private void loadSelectedRow(){
-        int row = expenseTable.getSelectedRow();
-        if(row >=0){
-            titleField.setText(expenseTableModel.getValueAt(row, 1).toString()!=""?expenseTableModel.getValueAt(row, 1).toString():"NULL");
-            amountField.setText(expenseTableModel.getValueAt(row, 2).toString()!=""?expenseTableModel.getValueAt(row, 2).toString():"NULL");
-            categoryComboBox.setSelectedItem(expenseTableModel.getValueAt(row, 3).toString());
-            descriptionArea.setText(expenseTableModel.getValueAt(row, 4).toString());       
-            
-        }
-    }
     //setuplayout
     private void setupLayout() {
-  
+        
         setLayout(new BorderLayout());
-
+        
         JPanel inputPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10);
-
+        
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.anchor = GridBagConstraints.WEST;
@@ -276,53 +362,53 @@ class ExpenseUI extends JFrame {
         inputPanel.add(new JLabel("Category:"));
         inputPanel.add(categoryComboBox);
 
-
+        
         JPanel buttonPanel=new JPanel(new FlowLayout());
         buttonPanel.add(addButton);
         buttonPanel.add(updateButton);
         buttonPanel.add(deleteButton);
 
-
+        
+        
         JPanel northPanel=new JPanel(new BorderLayout());
         northPanel.add(inputPanel,BorderLayout.CENTER);
         northPanel.add(buttonPanel,BorderLayout.SOUTH);
         northPanel.add(filterPanel,BorderLayout.NORTH);
-
-
+        
+        JPanel totalAmountPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        totalAmountPanel.add(totalAmountField);
+        
         add(northPanel,BorderLayout.NORTH);
-
+        add(totalAmountPanel,BorderLayout.SOUTH);
+        
         add(new JScrollPane(expenseTable),BorderLayout.CENTER);
+
+
     }
     
     private void loadExpense() {
-        // Save the currently selected row ID before refresh
-        int selectedId = -1;
-        int selectedRow = expenseTable.getSelectedRow();
-        if(selectedRow >= 0) {
-            selectedId = (int)expenseTableModel.getValueAt(selectedRow, 0);
-        }
-
         try{
             List<Expense> expenses = expenseDAO.getAllExpenses();
             updateExpenseTable(expenses);
-            
-            // Restore selection if there was one
-            if(selectedId != -1) {
-                for(int i = 0; i < expenseTableModel.getRowCount(); i++) {
-                    int rowId = (int)expenseTableModel.getValueAt(i, 0);
-                    if(rowId == selectedId) {
-                        expenseTable.setRowSelectionInterval(i, i);
-                        // expenseTable.scrollRectToVisible(expenseTable.getCellRect(i, 0, true));
-                        break;
-                    }
-                }
-            }
+            setDefault();
+            totalAmountField.setText("Total Amount: "+totalAmount());
+            filterComboBox.setSelectedIndex(0);
         }
         catch(Exception e){
             System.out.println(e.getMessage());
         }
     }
     
+    private void loadSelectedRow(){
+        int row = expenseTable.getSelectedRow();
+        if(row >=0){
+            titleField.setText(expenseTableModel.getValueAt(row, 1).toString()!=""?expenseTableModel.getValueAt(row, 1).toString():"NULL");
+            amountField.setText(expenseTableModel.getValueAt(row, 2).toString()!=""?expenseTableModel.getValueAt(row, 2).toString():"NULL");
+            categoryComboBox.setSelectedItem(expenseTableModel.getValueAt(row, 3).toString());
+            descriptionArea.setText(expenseTableModel.getValueAt(row, 4).toString());       
+            
+        }
+    }
     private void updateExpenseTable(List<Expense> expenses) {
         expenseTableModel.setRowCount(0);
         for (Expense expense : expenses) {
@@ -360,9 +446,6 @@ class ExpenseUI extends JFrame {
         filterComboBox.addActionListener(e->{
             filterExpense();
         });
-        categoryComboBox.addActionListener(e->{
-            filterExpense();
-        });
     
     }
     private void addExpenseSql(){
@@ -375,12 +458,8 @@ class ExpenseUI extends JFrame {
         Expense expense = new Expense(name, amount, description, new Date(), categoryID);
         expenseDAO.addExpense(expense);
             loadExpense();
-            titleField.setText("");
-            amountField.setText("");
-            categoryComboBox.setSelectedIndex(0);
-            filterComboBox.setSelectedIndex(0);
-            descriptionArea.setText("");
             JOptionPane.showMessageDialog(this, "Expense added successfully", "Success", JOptionPane.INFORMATION_MESSAGE);
+
         }
         catch(Exception e){
             e.printStackTrace();
@@ -437,58 +516,19 @@ class ExpenseUI extends JFrame {
 
     }
     private void filterExpense(){
-        // Save the currently selected row's ID before filtering
-        int selectedId = -1;
-        int selectedRow = expenseTable.getSelectedRow();
-        if(selectedRow >= 0) {
-            selectedId = (int)expenseTableModel.getValueAt(selectedRow, 0);
-        }
-
         try{
-            if ("All".equals(filterComboBox.getSelectedItem()))
-            {
+            String selectedCategory = (String)filterComboBox.getSelectedItem();
+            if(selectedCategory.equals("All")){
                 loadExpense();
-                // Only clear form if no row was selected
-                if(selectedId == -1) {
-                    setDefault();
-                }
+                return;
             }
             else{
-                int categoryID = expenseDAO.getCategoryID((String)filterComboBox.getSelectedItem());
+                int categoryID = expenseDAO.getCategoryID(selectedCategory);
                 List<Expense> expenses = expenseDAO.filterExpenseByCategory(categoryID);
                 updateExpenseTable(expenses);
-                
-                // If there was a selected row, try to find and select it again
-                if(selectedId != -1) {
-                    boolean found = false;
-                    int rowCount = expenseTableModel.getRowCount();
-                    
-                    for(int i = 0; i < rowCount; i++) {
-                        try {
-                            int rowId = (int)expenseTableModel.getValueAt(i, 0);
-                            if(rowId == selectedId) {
-                                if(i < expenseTable.getRowCount()) {
-                                    expenseTable.setRowSelectionInterval(i, i);
-                                    loadSelectedRow(); // Reload the form fields
-                                    found = true;
-                                }
-                                
-                                break;
-                            }
-                        } catch (Exception e) {
-                            JOptionPane.showMessageDialog(this, "error","error",JOptionPane.ERROR_MESSAGE);
-                            System.out.println("Error processing row " + i + ": " + e.getMessage());
-                        }
-                    }
-                    // If selected row is not in filtered results, clear the form
-                    if(!found) {
-                        setDefault();
-                    }
-                } else {
-                    // If no row was selected, clear the form
-                    setDefault();
-                }
-            }
+                totalAmountField.setText("Total Amount: "+totalAmount());
+                setDefault();
+            } 
         }
         catch(Exception e){
             e.printStackTrace();
@@ -502,6 +542,26 @@ class ExpenseUI extends JFrame {
         
         descriptionArea.setText("");
     }
+    private String totalAmount()
+    {
+        try{
+            String name = (String)filterComboBox.getSelectedItem();
+            if(name.equals("All")){
+                double total = expenseDAO.totalExpenses();
+                return String.format("%.2f",total);
+            }
+            else{
+                int categoryID = expenseDAO.getCategoryID(name);
+                double total = expenseDAO.totalExpensesByCategory(categoryID);
+                return String.format("%.2f",total);
+            }
+    }
+    catch(Exception e){
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Failed to filter expense: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+    }
+    return "";
+}
     
 }
 

@@ -20,6 +20,12 @@ public class ExpenseDAO {
     private static final String DELETE_EXPENSE = "DELETE FROM expense WHERE expense_id = ?";
     private static final String UPDATE_EXPENSE = "UPDATE expense SET expense_name = ?, amount = ?, category_id = ?, description = ?, transaction_date = ? WHERE expense_id = ?";
     private static final String FILTER = "SELECT * FROM expense WHERE category_id = ?";
+    private static final String UPDATE_CATGORY = "UPDATE category SET category_name = ? WHERE category_id = ?";
+    private static final String DELETE_CATEGORY = "DELETE FROM category WHERE category_id = ?";
+    private static final String DELETE_EXPENSE_BY_CATEGORY = "DELETE FROM expense WHERE category_id = ?";
+    private static final String TOTAL_EXPENSE = "SELECT SUM(amount) FROM expense";
+    private static final String TOTAL_EXPENSE_BY_CATEGORY = "SELECT SUM(amount) FROM expense WHERE category_id = ?";
+    private static final String GET_EXPENSE_COUNT = "SELECT COUNT(*) FROM expense WHERE category_id = ?";
 
     private Category getCategoryRow(ResultSet rs) throws SQLException{
         int id = rs.getInt("category_id");
@@ -146,6 +152,47 @@ public class ExpenseDAO {
         return name;
         }
 
+        // update Category
+        public boolean updateCategorySql(Category category) throws SQLException
+        {
+            try(
+                Connection con = DatabaseConnection.getDBConnection();
+                PreparedStatement stmt = con.prepareStatement(UPDATE_CATGORY)
+            )
+            {
+                stmt.setString(1, category.getName());
+                stmt.setInt(2,category.getId());
+                int rowsAffected = stmt.executeUpdate();
+                if(rowsAffected == 0)
+                {
+                    throw new SQLException();
+
+                }
+                return rowsAffected>0;
+            }
+        }
+        // Delete Category
+        public void deleteCategorySql(Category cat) throws SQLException
+        {
+            int id = cat.getId();
+            try(
+                Connection con = DatabaseConnection.getDBConnection();
+                PreparedStatement stmt1 = con.prepareStatement(DELETE_EXPENSE_BY_CATEGORY);
+                PreparedStatement stmt2 = con.prepareStatement(DELETE_CATEGORY);
+            )
+            {
+                stmt1.setInt(1,id);
+                stmt1.executeUpdate();
+                stmt2.setInt(1,id);
+                int rowsAffected = stmt2.executeUpdate();
+                if(rowsAffected == 0)
+                {
+                    throw new SQLException();
+                }
+            }
+
+        }
+
         // Delete expenses
 
         public void deleteExpenseSql(int row) throws SQLException
@@ -199,6 +246,55 @@ public class ExpenseDAO {
                 }
                 return expenses;
             }
+        }
+        // total expenses
+        public double totalExpenses() throws SQLException
+        {
+            try(
+                Connection con = DatabaseConnection.getDBConnection();
+                PreparedStatement stmt = con.prepareStatement(TOTAL_EXPENSE)
+            )
+            {
+                ResultSet rs = stmt.executeQuery();
+                if(rs.next())
+                {
+                    return rs.getDouble("SUM(amount)");
+                }
+            }
+            return 0;
+        }
+        // total expenses by category
+        public double totalExpensesByCategory(int category_id) throws SQLException
+        {
+            try(
+                Connection con = DatabaseConnection.getDBConnection();
+                PreparedStatement stmt = con.prepareStatement(TOTAL_EXPENSE_BY_CATEGORY)
+            )
+            {
+                stmt.setInt(1, category_id);
+                ResultSet rs = stmt.executeQuery();
+                if(rs.next())
+                {
+                    return rs.getDouble(1);
+                }
+            }
+            return 0;
+        }
+        public int getExpenseCount(int categoryId) throws SQLException
+        {
+            try(
+                Connection con = DatabaseConnection.getDBConnection();
+                PreparedStatement stmt = con.prepareStatement(GET_EXPENSE_COUNT)
+            )
+            {
+                stmt.setInt(1, categoryId);
+                ResultSet rs = stmt.executeQuery();
+                if(rs.next())
+                {
+                    return rs.getInt(1);
+                }
+            }
+            return 0;
         }
 
 
