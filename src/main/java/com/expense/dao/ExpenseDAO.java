@@ -26,6 +26,7 @@ public class ExpenseDAO {
     private static final String TOTAL_EXPENSE = "SELECT SUM(amount) FROM expense";
     private static final String TOTAL_EXPENSE_BY_CATEGORY = "SELECT SUM(amount) FROM expense WHERE category_id = ?";
     private static final String GET_EXPENSE_COUNT = "SELECT COUNT(*) FROM expense WHERE category_id = ?";
+    // private static final String  = "SELECT SUM(amount) FROM expense WHERE category_id = ?";
 
     private Category getCategoryRow(ResultSet rs) throws SQLException{
         int id = rs.getInt("category_id");
@@ -295,6 +296,22 @@ public class ExpenseDAO {
                 }
             }
             return 0;
+        }
+        public double getExpenseAmount(int categoryId) throws SQLException
+        {
+            try(
+                Connection con = DatabaseConnection.getDBConnection();
+                PreparedStatement stmt = con.prepareStatement(TOTAL_EXPENSE_BY_CATEGORY)
+            )
+            {
+                stmt.setInt(1, categoryId);
+                ResultSet rs = stmt.executeQuery();
+                if(rs.next())
+                {
+                    return (rs.getDouble(1));
+                }
+            }
+            return 0.0;
         }
 
 

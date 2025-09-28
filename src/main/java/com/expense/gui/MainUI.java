@@ -91,7 +91,7 @@ class CategoryUI extends JFrame{
         
         // categoryTableModel = new DefaultTableModel();
         categoryName = new JTextField(20);
-        String[] columns = {"ID","Name","Expense Count"};
+        String[] columns = {"ID","Name","Expense Count","Amount"};
         categoryTableModel = new DefaultTableModel(columns,0){
             @Override
             public boolean isCellEditable(int row, int column){
@@ -153,7 +153,7 @@ class CategoryUI extends JFrame{
     private void updateCategoryTable(List<Category> categories) {
         categoryTableModel.setRowCount(0);
         for (Category c : categories) {
-            categoryTableModel.addRow(new Object[]{c.getId(), c.getName(),getExpenseCount(c.getId())});
+            categoryTableModel.addRow(new Object[]{c.getId(), c.getName(),getExpenseCount(c.getId()), getExpenseAmount(c.getId())});
         }
     }
     private void setUpListeners(){
@@ -264,6 +264,18 @@ class CategoryUI extends JFrame{
         {
             e.printStackTrace();
             return 0;
+        }
+    }
+    private String getExpenseAmount(int categoryId)
+    {
+        try{
+            double amount = expenseDAO.getExpenseAmount(categoryId);
+            return String.format("%.2f",amount);
+        }
+        catch(SQLException e)
+        {
+            e.printStackTrace();
+            return "0.00";
         }
     }
 }
